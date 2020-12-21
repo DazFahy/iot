@@ -464,6 +464,31 @@ namespace Iot.Device.Pn5180
             }
         }
 
+        /// <inheritdoc/>
+        public override bool ReselectTarget(byte targetNumber)
+        {
+            if (targetNumber == 0)
+            {
+                // TODO: this should be implemented this for Type A card for this reader
+                // This will need to send WUPA (0x52 coded on 7 bits), Anti-collision and select loops like for initial detection
+                // We don't throw an exception, this is just telling that the selection failed
+                return false;
+            }
+            else
+            {
+                var card = _activeSelected.Where(m => m.Card.TargetNumber == targetNumber).FirstOrDefault();
+                if (card is null)
+                {
+                    return false;
+                }
+
+                DeselectCardTypeB(card.Card);
+                // Deselect may fail but if selection succeed it's ok
+                var ret = SelectCardTypeB(card.Card);
+                return ret;
+            }
+        }
+
         private int TransceiveClassic(byte targetNumber, ReadOnlySpan<byte> dataToSend, Span<byte> dataFromCard)
         {
             // type B card have a tag number which is always more than 1
@@ -687,7 +712,7 @@ namespace Iot.Device.Pn5180
         /// <param name="blockAddress">The block address to authenticate</param>
         /// <param name="cardUid">The 4 bytes UUID of the card</param>
         /// <returns>True if success</returns>
-        public bool MifareAuthenticate(Span<byte> key, MifareCardCommand mifareCommand, byte blockAddress, Span<byte> cardUid)
+        public bool MifareAuthenticate(ReadOnlySpan<byte> key, MifareCardCommand mifareCommand, byte blockAddress, ReadOnlySpan<byte> cardUid)
         {
             LogInfo.Log($"{nameof(MifareAuthenticate)}: ", LogLevel.Debug);
             if (key.Length != 6)
